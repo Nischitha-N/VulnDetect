@@ -43,10 +43,12 @@ html, body, #root {
 }
 
 /* Scrollbar */
+
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
 /* Selection */
+
 ::selection { background: rgba(79,143,255,0.3); color: white; }
