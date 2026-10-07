@@ -82,9 +82,8 @@ vuln-detector/
 │   │   │   └── models/             # Trained final_model.joblib & metadata
 │   │   ├── sarif/sarif.py          # OASIS SARIF v2.1.0 exporter
 │   │   └── schemas/models.py       # Pydantic data models
-│   ├── tests/                      # 128 automated unit & regression tests
-│   │   └── benchmark/              # 24-case static benchmark & runner
-│   └── Dockerfile
+│   └── tests/                      # 128 automated unit & regression tests
+│       └── benchmark/              # 24-case static benchmark & runner
 │
 ├── frontend/                       # React 18 + Vite dashboard
 │   ├── src/
