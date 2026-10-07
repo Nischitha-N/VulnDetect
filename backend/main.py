@@ -7,22 +7,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.api.routes import router
-from app.ml.model import get_model
+from app.ml.predictor import get_ml_predictor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm up ML model at startup (not on first request)
-    print("Warming up ML model...")
-    get_model()
-    print("Model ready.")
+    # Warm up ML verification model at startup (not on first request)
+    print("Warming up ML verification model...")
+    get_ml_predictor()
+    print("ML verification model ready.")
     yield
 
 
 app = FastAPI(
-    title="AI Code Vulnerability Detector",
-    description="Detect vulnerabilities in C/C++ code using static analysis + ML",
-    version="1.0.0",
+    title="VulnDetect API",
+    description="Multi-layer static analysis engine with auxiliary ML finding-level verification for C/C++",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -39,4 +39,4 @@ app.include_router(router)
 
 @app.get("/")
 async def root():
-    return {"message": "AI Code Vulnerability Detector API", "docs": "/docs"}
+    return {"message": "VulnDetect Static Analysis & Verification API", "docs": "/docs"}

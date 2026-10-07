@@ -2,12 +2,14 @@
 FastAPI API routes for vulnerability scanning.
 """
 
+import os
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from app.core.file_scanner import scan_single_file, scan_zip_folder
 from app.core.database import save_scan, get_scan, list_scans
-from app.schemas.models import ScanResponse
+from app.schemas.models import ScanResponse, VulnerabilityResult
+from app.sarif.sarif import generate_sarif_report
 
 router = APIRouter(prefix="/api/v1", tags=["scanner"])
 
@@ -20,10 +22,9 @@ async def scan_file(
     file: UploadFile = File(...),
 ):
     """
-    Upload a C/C++ source file or a .zip folder for vulnerability analysis.
-    Returns structured results with risk scores and fix suggestions.
+    Upload a C/C++ source file or a .zip folder for multi-layer vulnerability analysis.
+    Returns structured results with risk scores, AST & taint evidence, and fix suggestions.
     """
-    import os
     ext = os.path.splitext(file.filename)[1].lower()
 
     if ext not in ALLOWED_EXTENSIONS:
@@ -54,6 +55,22 @@ async def get_scan_result(scan_id: str):
     return doc
 
 
+@router.get("/scan/{scan_id}/sarif")
+async def get_scan_sarif(scan_id: str):
+    """Export scan results in OASIS SARIF v2.1.0 format."""
+    doc = await get_scan(scan_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Scan not found.")
+
+    results = [VulnerabilityResult(**r) for r in doc.get("results", [])]
+    sarif = generate_sarif_report(results, scan_id)
+    return JSONResponse(
+        content=sarif,
+        media_type="application/sarif+json",
+        headers={"Content-Disposition": f'attachment; filename="scan-{scan_id}.sarif"'},
+    )
+
+
 @router.get("/scans")
 async def list_recent_scans(limit: int = 20):
     """List recent scans (summaries only)."""
@@ -63,4 +80,9 @@ async def list_recent_scans(limit: int = 20):
 
 @router.get("/health")
 async def health():
-    return {"status": "ok", "service": "vuln-detector"}
+    return {
+        "status": "ok",
+        "service": "vuln-detector",
+        "version": "2.0.0",
+        "features": ["ast_engine", "taint_analysis", "multi_analyzer_dedup", "sarif_export"],
+    }

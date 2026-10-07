@@ -1,0 +1,236 @@
+{
+  "selected_model": "RandomForest",
+  "model_type": "RandomForestClassifier",
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 5,
+    "min_samples_split": 3,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "dataset_summary": {
+    "total_samples": 56,
+    "train_samples": 32,
+    "validation_samples": 12,
+    "test_samples": 12,
+    "train_class_balance": {
+      "positive": 16,
+      "negative": 16
+    },
+    "val_class_balance": {
+      "positive": 6,
+      "negative": 6
+    },
+    "test_class_balance": {
+      "positive": 6,
+      "negative": 6
+    },
+    "group_leakage": "ZERO (enforced by grouped partition)",
+    "random_seed": 42,
+    "benchmark_manifest_excluded": true
+  },
+  "feature_pipeline": {
+    "n_features": 12,
+    "feature_names": [
+      "analyzer_confidence",
+      "is_multi_layer",
+      "has_dataflow_path",
+      "dataflow_step_count",
+      "has_sanitizer_in_path",
+      "is_interprocedural",
+      "analysis_status_code",
+      "cwe_family_id",
+      "has_guard_in_snippet",
+      "is_constant_literal_sink",
+      "line_length_norm",
+      "pointer_deref_present"
+    ],
+    "scaling": "None (Tree-based models consume unscaled continuous/binary features)"
+  },
+  "selected_model_metrics": {
+    "train": {
+      "accuracy": 0.9375,
+      "precision": 0.9375,
+      "recall": 0.9375,
+      "f1": 0.9375,
+      "roc_auc": 0.9922,
+      "brier_score": 0.0834,
+      "confusion_matrix": {
+        "tn": 15,
+        "fp": 1,
+        "fn": 1,
+        "tp": 15
+      }
+    },
+    "validation": {
+      "accuracy": 0.75,
+      "precision": 0.7143,
+      "recall": 0.8333,
+      "f1": 0.7692,
+      "roc_auc": 0.75,
+      "brier_score": 0.1963,
+      "confusion_matrix": {
+        "tn": 4,
+        "fp": 2,
+        "fn": 1,
+        "tp": 5
+      }
+    },
+    "test": {
+      "accuracy": 0.75,
+      "precision": 0.8,
+      "recall": 0.6667,
+      "f1": 0.7273,
+      "roc_auc": 0.875,
+      "brier_score": 0.1782,
+      "confusion_matrix": {
+        "tn": 5,
+        "fp": 1,
+        "fn": 2,
+        "tp": 4
+      }
+    }
+  },
+  "feature_importances": {
+    "line_length_norm": 0.2941,
+    "analyzer_confidence": 0.1452,
+    "dataflow_step_count": 0.0936,
+    "analysis_status_code": 0.0815,
+    "has_dataflow_path": 0.075,
+    "is_constant_literal_sink": 0.0743,
+    "is_multi_layer": 0.0705,
+    "cwe_family_id": 0.0557,
+    "has_guard_in_snippet": 0.0482,
+    "pointer_deref_present": 0.038,
+    "is_interprocedural": 0.0177,
+    "has_sanitizer_in_path": 0.0063
+  },
+  "all_candidates_comparison": {
+    "RandomForest": {
+      "model_type": "RandomForestClassifier",
+      "train": {
+        "accuracy": 0.9375,
+        "precision": 0.9375,
+        "recall": 0.9375,
+        "f1": 0.9375,
+        "roc_auc": 0.9922,
+        "brier_score": 0.0834,
+        "confusion_matrix": {
+          "tn": 15,
+          "fp": 1,
+          "fn": 1,
+          "tp": 15
+        }
+      },
+      "validation": {
+        "accuracy": 0.75,
+        "precision": 0.7143,
+        "recall": 0.8333,
+        "f1": 0.7692,
+        "roc_auc": 0.75,
+        "brier_score": 0.1963,
+        "confusion_matrix": {
+          "tn": 4,
+          "fp": 2,
+          "fn": 1,
+          "tp": 5
+        }
+      },
+      "test": {
+        "accuracy": 0.75,
+        "precision": 0.8,
+        "recall": 0.6667,
+        "f1": 0.7273,
+        "roc_auc": 0.875,
+        "brier_score": 0.1782,
+        "confusion_matrix": {
+          "tn": 5,
+          "fp": 1,
+          "fn": 2,
+          "tp": 4
+        }
+      },
+      "feature_importances": {
+        "line_length_norm": 0.2941,
+        "analyzer_confidence": 0.1452,
+        "dataflow_step_count": 0.0936,
+        "analysis_status_code": 0.0815,
+        "has_dataflow_path": 0.075,
+        "is_constant_literal_sink": 0.0743,
+        "is_multi_layer": 0.0705,
+        "cwe_family_id": 0.0557,
+        "has_guard_in_snippet": 0.0482,
+        "pointer_deref_present": 0.038,
+        "is_interprocedural": 0.0177,
+        "has_sanitizer_in_path": 0.0063
+      }
+    },
+    "GradientBoosting": {
+      "model_type": "GradientBoostingClassifier",
+      "train": {
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "roc_auc": 1.0,
+        "brier_score": 0.01,
+        "confusion_matrix": {
+          "tn": 16,
+          "fp": 0,
+          "fn": 0,
+          "tp": 16
+        }
+      },
+      "validation": {
+        "accuracy": 0.5,
+        "precision": 0.5,
+        "recall": 0.5,
+        "f1": 0.5,
+        "roc_auc": 0.6667,
+        "brier_score": 0.2429,
+        "confusion_matrix": {
+          "tn": 3,
+          "fp": 3,
+          "fn": 3,
+          "tp": 3
+        }
+      },
+      "test": {
+        "accuracy": 0.6667,
+        "precision": 0.625,
+        "recall": 0.8333,
+        "f1": 0.7143,
+        "roc_auc": 0.8333,
+        "brier_score": 0.2424,
+        "confusion_matrix": {
+          "tn": 3,
+          "fp": 3,
+          "fn": 1,
+          "tp": 5
+        }
+      },
+      "feature_importances": {
+        "line_length_norm": 0.472,
+        "dataflow_step_count": 0.1085,
+        "analyzer_confidence": 0.1005,
+        "analysis_status_code": 0.0881,
+        "has_guard_in_snippet": 0.0576,
+        "cwe_family_id": 0.0456,
+        "has_dataflow_path": 0.0421,
+        "pointer_deref_present": 0.0305,
+        "is_multi_layer": 0.0229,
+        "is_constant_literal_sink": 0.0205,
+        "is_interprocedural": 0.0116,
+        "has_sanitizer_in_path": 0.0
+      }
+    }
+  },
+  "leakage_audit": {
+    "verdict": "CLEAN_NO_LEAKAGE",
+    "group_leakage_count": 0,
+    "cross_split_feature_collision_count": 2,
+    "perfect_separating_features": []
+  },
+  "timestamp_utc": "2026-10-05T23:08:05.117119+00:00",
+  "limitations_and_ethics": "Small dataset (N=56). The model is designed solely as an auxiliary finding-level triage prioritizer, not a primary detector. Results should not be claimed as statistically significant generalization to arbitrary unseen software without larger-scale corpus evaluation."
+}

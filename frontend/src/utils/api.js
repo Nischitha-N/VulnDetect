@@ -46,3 +46,12 @@ export async function healthCheck() {
     return false
   }
 }
+
+/**
+ * Fetch SARIF format for a scan.
+ */
+export async function getSarifExport(scanId) {
+  const { data } = await api.get(`/api/v1/scan/${scanId}/sarif`)
+  return data
+}
+

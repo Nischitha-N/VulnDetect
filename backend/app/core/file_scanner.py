@@ -1,5 +1,5 @@
 """
-File scanner: handles uploads, extracts .c/.cpp files, orchestrates analysis.
+File scanner: handles uploads, safe zip extraction, and orchestrates multi-layer analysis.
 """
 
 import os
@@ -9,12 +9,15 @@ import time
 import uuid
 from datetime import datetime, timezone
 from typing import List, Tuple
+from fastapi import HTTPException
 
-from app.core.analyzer import analyze_file
+from app.core.analyzer import analyze_file, analyze_project
+from app.core.security_guard import SecurityGuard, SecurityValidationError
 from app.schemas.models import VulnerabilityResult, ScanSummary, ScanResponse
 
 SUPPORTED_EXTENSIONS = {".c", ".cpp", ".cc", ".cxx", ".h", ".hpp"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB per file
+
 
 
 def _collect_source_files(directory: str) -> List[Tuple[str, str]]:
@@ -32,10 +35,14 @@ def _collect_source_files(directory: str) -> List[Tuple[str, str]]:
 
 def _build_summary(results: List[VulnerabilityResult], duration_ms: int) -> ScanSummary:
     vuln_type_counts = {}
+    analyzer_breakdown = {}
     high = medium = low = 0
 
     for r in results:
         vuln_type_counts[r.vulnerability] = vuln_type_counts.get(r.vulnerability, 0) + 1
+        src = r.analyzer_source or "ast"
+        analyzer_breakdown[src] = analyzer_breakdown.get(src, 0) + 1
+
         if r.severity in ("CRITICAL", "HIGH"):
             high += 1
         elif r.severity == "MEDIUM":
@@ -51,20 +58,28 @@ def _build_summary(results: List[VulnerabilityResult], duration_ms: int) -> Scan
         low_risk=low,
         scan_duration_ms=duration_ms,
         vulnerability_types=vuln_type_counts,
+        analyzer_breakdown=analyzer_breakdown,
     )
 
 
 async def scan_single_file(filename: str, content: bytes) -> ScanResponse:
-    """Analyze a single uploaded source file."""
+    """Analyze a single uploaded source file safely."""
     t0 = time.monotonic()
     scan_id = str(uuid.uuid4())
+
+    safe_name = SecurityGuard.sanitize_filename(filename)
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Security violation: File exceeds maximum allowed size of {MAX_FILE_SIZE} bytes."
+        )
 
     try:
         source = content.decode("utf-8", errors="replace")
     except Exception:
         source = ""
 
-    results = analyze_file(filename, source)
+    results = analyze_file(safe_name, source)
     duration_ms = int((time.monotonic() - t0) * 1000)
 
     summary = _build_summary(results, duration_ms)
@@ -79,7 +94,7 @@ async def scan_single_file(filename: str, content: bytes) -> ScanResponse:
 
 
 async def scan_zip_folder(zip_content: bytes) -> ScanResponse:
-    """Extract zip, recursively scan all C/C++ files."""
+    """Extract zip safely with SecurityGuard quotas and scan all C/C++ files."""
     t0 = time.monotonic()
     scan_id = str(uuid.uuid4())
     all_results: List[VulnerabilityResult] = []
@@ -89,26 +104,25 @@ async def scan_zip_folder(zip_content: bytes) -> ScanResponse:
         with open(zip_path, "wb") as f:
             f.write(zip_content)
 
-        with zipfile.ZipFile(zip_path, "r") as zf:
-            zf.extractall(tmpdir)
+        try:
+            extracted_files = SecurityGuard.validate_and_extract_zip(zip_path, tmpdir)
+        except SecurityValidationError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
-        source_files = _collect_source_files(tmpdir)
-        total_files = len(source_files)
+        total_files = len(extracted_files)
 
-        for full_path, rel_path in source_files:
-            file_size = os.path.getsize(full_path)
-            if file_size > MAX_FILE_SIZE:
-                continue
+        file_tuples: List[Tuple[str, str]] = []
+        for full_path in extracted_files:
+            rel_path = os.path.relpath(full_path, tmpdir)
             try:
-                with open(full_path, "r", encoding="utf-8", errors="replace") as f:
-                    source = f.read()
-                file_results = analyze_file(rel_path, source)
-                # Tag with relative path
-                for r in file_results:
-                    r.file = rel_path
-                all_results.extend(file_results)
-            except Exception:
+                source = SecurityGuard.read_safe_source_code(full_path)
+                file_tuples.append((rel_path, source))
+            except Exception as e:
+                print(f"[FileScanner] Warning: failed to read {rel_path}: {e}")
                 continue
+
+        all_results = analyze_project(file_tuples)
+
 
     duration_ms = int((time.monotonic() - t0) * 1000)
     all_results.sort(key=lambda r: (-r.risk_score, r.file, r.line))
@@ -122,3 +136,4 @@ async def scan_zip_folder(zip_content: bytes) -> ScanResponse:
         results=all_results,
         summary=summary,
     )
+

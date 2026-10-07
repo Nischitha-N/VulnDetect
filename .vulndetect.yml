@@ -1,0 +1,50 @@
+# VulnDetect Configuration File (.vulndetect.yml)
+# Controls static analysis rules, severity thresholds, exclusions, and CI behavior.
+
+# Active analyzer layers
+analyzers:
+  - rule          # Regex and lexical patterns
+  - ast           # Tree-sitter AST syntax and direct calls
+  - advanced_ast  # Memory safety, UAF, double-free, leaks, int-overflow, TOCTOU
+  - taint         # Intra-procedural taint flow (Source -> Propagation -> Sink)
+  - uncertainty   # Ambiguity analysis & limitation tagging
+
+# Minimum severity to report (LOW, MEDIUM, HIGH, CRITICAL)
+severity_threshold: LOW
+
+# CI/CD Quality Gate: exit with code 1 if findings meet or exceed this severity
+# Options: null (disabled), MEDIUM, HIGH, CRITICAL
+fail_on: HIGH
+
+# Ignored directory and file glob patterns
+ignore_paths:
+  - "vendor/**"
+  - "build/**"
+  - "dist/**"
+  - "node_modules/**"
+  - ".git/**"
+  - "tests/**"
+  - "third_party/**"
+
+# Finding suppressions (by rule_id, CWE, file, or line)
+suppressions:
+  # Example suppression rule:
+  # - rule_id: "AST-STRCPY-004"
+  #   file: "legacy/utils.c"
+  #   reason: "Legacy code reviewed and bounded by caller"
+
+# Custom user-defined sources, sinks, and sanitizers
+custom_sources:
+  - "read_user_config"
+  - "recv_custom_packet"
+
+custom_sinks:
+  - "custom_exec_shell"
+  - "execute_privileged_sql"
+
+custom_sanitizers:
+  - "canonicalize_and_verify_path"
+  - "escape_shell_metachars"
+
+# Optional AI ambiguity review for NEEDS_REVIEW findings
+enable_llm_review: false

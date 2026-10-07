@@ -1,0 +1,545 @@
+{
+  "control_a_taint": {
+    "scan_id": "5012f78e-263c-40a5-8481-b1d8fdcc8563",
+    "file": "single_file_taint.c",
+    "total_findings": 2,
+    "high_risk": 2,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 4,
+    "findings": [
+      {
+        "file": "single_file_taint.c",
+        "line": 14,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'x' passed to command executor system().",
+        "dataflow_path": null
+      },
+      {
+        "file": "single_file_taint.c",
+        "line": 19,
+        "column": 5,
+        "vulnerability": "Inter-procedural Taint to system()",
+        "rule_id": "IPA-TAINT-SYSTEM-001",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "ipa",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Inter-procedural Command Injection: tainted data originating from 'Returns output of getenv()' on line 18 flows into helper 'wrapper()' which executes critical sink 'system()'.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 18,
+            "column": null,
+            "code": "",
+            "description": "Taint origin: Returns output of getenv()"
+          },
+          {
+            "step_type": "PROPAGATION",
+            "line": 19,
+            "column": 5,
+            "code": "wrapper(x);",
+            "description": "Passed to helper 'wrapper()'"
+          },
+          {
+            "step_type": "SINK",
+            "line": 19,
+            "column": 5,
+            "code": "wrapper(x)",
+            "description": "Callee invokes sink 'system()'"
+          }
+        ]
+      }
+    ]
+  },
+  "control_b_uaf": {
+    "scan_id": "e926633c-6355-49c0-aa08-9bae2b6e9536",
+    "file": "single_file_uaf.c",
+    "total_findings": 1,
+    "high_risk": 1,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 2,
+    "findings": [
+      {
+        "file": "single_file_uaf.c",
+        "line": 20,
+        "column": 5,
+        "vulnerability": "Inter-procedural Use After Free",
+        "rule_id": "IPA-UAF-001",
+        "cwe": "CWE-416",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "ipa",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Inter-procedural Use-After-Free: pointer 'p' was freed via helper 'release_buffer()' on line 19 and subsequently dereferenced.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 19,
+            "column": null,
+            "code": "release_buffer(p)",
+            "description": "Memory released by helper"
+          },
+          {
+            "step_type": "SINK",
+            "line": 20,
+            "column": 5,
+            "code": "p[0] = 'A';",
+            "description": "Use-after-free in caller 'main'"
+          }
+        ]
+      }
+    ]
+  },
+  "control_c_safe": {
+    "scan_id": "99563dff-78a9-49a2-9042-54f3bfec404e",
+    "file": "single_file_safe.c",
+    "total_findings": 1,
+    "high_risk": 1,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 2,
+    "findings": [
+      {
+        "file": "single_file_safe.c",
+        "line": 10,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'x' passed to command executor system().",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "control_d_alias": {
+    "scan_id": "b63caaf4-497b-4b32-a310-fa57609276cb",
+    "file": "single_file_alias.c",
+    "total_findings": 3,
+    "high_risk": 2,
+    "medium_risk": 1,
+    "low_risk": 0,
+    "scan_duration_ms": 2,
+    "findings": [
+      {
+        "file": "single_file_alias.c",
+        "line": 17,
+        "column": 5,
+        "vulnerability": "Null Pointer Dereference",
+        "rule_id": "ADV-NULL-001",
+        "cwe": "CWE-476",
+        "severity": "CRITICAL",
+        "confidence": 0.88,
+        "risk_score": 0.94,
+        "analyzer_source": "ast",
+        "analysis_status": "LIKELY",
+        "explanation": "Pointer 'p' allocated by malloc() at line 14 is dereferenced at line 17 without a preceding null check. malloc() can return NULL on allocation failure.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 14,
+            "column": 0,
+            "code": "    char *p = malloc(32);",
+            "description": "Allocation via malloc() \u2014 may return NULL"
+          },
+          {
+            "step_type": "SINK",
+            "line": 17,
+            "column": 5,
+            "code": "    p[0] = 'A';",
+            "description": "Dereference of 'p' without null check"
+          }
+        ]
+      },
+      {
+        "file": "single_file_alias.c",
+        "line": 14,
+        "column": 10,
+        "vulnerability": "Memory Leak",
+        "rule_id": "ADV-MEMLEAK-001",
+        "cwe": "CWE-401",
+        "severity": "HIGH",
+        "confidence": 0.72,
+        "risk_score": 0.67,
+        "analyzer_source": "ast",
+        "analysis_status": "LIKELY",
+        "explanation": "Memory allocated via malloc() at line 14 and stored in 'p' is not freed before the function returns.",
+        "dataflow_path": null
+      },
+      {
+        "file": "single_file_alias.c",
+        "line": 14,
+        "column": 5,
+        "vulnerability": "Memory: Unchecked malloc()",
+        "rule_id": "RULE-MALLOC-CHECK-007",
+        "cwe": "CWE-476",
+        "severity": "MEDIUM",
+        "confidence": 0.65,
+        "risk_score": 0.6,
+        "analyzer_source": "regex",
+        "analysis_status": "LIKELY",
+        "explanation": "malloc() return value may be NULL upon allocation failure; dereferencing without check causes crash.",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "control_e_struct": {
+    "scan_id": "8e287324-24e9-4033-93ff-80fe3cdeab93",
+    "file": "single_file_struct.c",
+    "total_findings": 3,
+    "high_risk": 3,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 3,
+    "findings": [
+      {
+        "file": "single_file_struct.c",
+        "line": 19,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'd->value' passed to command executor system().",
+        "dataflow_path": null
+      },
+      {
+        "file": "single_file_struct.c",
+        "line": 24,
+        "column": 14,
+        "vulnerability": "Use of Uninitialized Variable",
+        "rule_id": "CFG-UNINIT-CONFIRMED-001",
+        "cwe": "CWE-457",
+        "severity": "CRITICAL",
+        "confidence": 0.95,
+        "risk_score": 0.89,
+        "analyzer_source": "cfg",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Use of Uninitialized Variable: 'd' is read before being initialized along this execution path.",
+        "dataflow_path": null
+      },
+      {
+        "file": "single_file_struct.c",
+        "line": 25,
+        "column": 14,
+        "vulnerability": "Use of Uninitialized Variable",
+        "rule_id": "CFG-UNINIT-CONFIRMED-001",
+        "cwe": "CWE-457",
+        "severity": "CRITICAL",
+        "confidence": 0.95,
+        "risk_score": 0.89,
+        "analyzer_source": "cfg",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Use of Uninitialized Variable: 'd' is read before being initialized along this execution path.",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "exp_a_taint": {
+    "scan_id": "55a44c6b-ac96-4914-98c3-6fe4a6cba677",
+    "experiment": "exp_a_taint",
+    "files_in_zip": [
+      "input.c",
+      "main.c",
+      "wrapper.c"
+    ],
+    "total_files_scanned": 3,
+    "total_findings": 2,
+    "high_risk": 2,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 20,
+    "findings": [
+      {
+        "file": "main.c",
+        "line": 13,
+        "column": 5,
+        "vulnerability": "Inter-procedural Taint to system()",
+        "rule_id": "IPA-TAINT-SYSTEM-001",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "ipa",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Inter-procedural Command Injection: tainted data originating from 'Returns output of getenv()' on line 12 flows into helper 'wrapper()' which executes critical sink 'system()'.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 12,
+            "column": null,
+            "code": "",
+            "description": "Taint origin: Returns output of getenv()"
+          },
+          {
+            "step_type": "PROPAGATION",
+            "line": 13,
+            "column": 5,
+            "code": "wrapper(x);",
+            "description": "Passed to helper 'wrapper()'"
+          },
+          {
+            "step_type": "SINK",
+            "line": 13,
+            "column": 5,
+            "code": "wrapper(x)",
+            "description": "Callee invokes sink 'system()'"
+          }
+        ]
+      },
+      {
+        "file": "wrapper.c",
+        "line": 9,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'x' passed to command executor system().",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "exp_b_uaf": {
+    "scan_id": "8028fd8e-78b5-4450-8b38-aaaf0e89e432",
+    "experiment": "exp_b_uaf",
+    "files_in_zip": [
+      "allocate.c",
+      "free_helper.c",
+      "main.c"
+    ],
+    "total_files_scanned": 3,
+    "total_findings": 1,
+    "high_risk": 1,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 18,
+    "findings": [
+      {
+        "file": "main.c",
+        "line": 15,
+        "column": 5,
+        "vulnerability": "Inter-procedural Use After Free",
+        "rule_id": "IPA-UAF-001",
+        "cwe": "CWE-416",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "ipa",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Inter-procedural Use-After-Free: pointer 'p' was freed via helper 'release_buffer()' on line 14 and subsequently dereferenced.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 14,
+            "column": null,
+            "code": "release_buffer(p)",
+            "description": "Memory released by helper"
+          },
+          {
+            "step_type": "SINK",
+            "line": 15,
+            "column": 5,
+            "code": "p[0] = 'A';",
+            "description": "Use-after-free in caller 'main'"
+          }
+        ]
+      }
+    ]
+  },
+  "exp_c_safe": {
+    "scan_id": "179d3cb0-1dcf-4ff4-b605-05e0d7b1d2fd",
+    "experiment": "exp_c_safe",
+    "files_in_zip": [
+      "safe_main.c",
+      "safe_wrapper.c"
+    ],
+    "total_files_scanned": 2,
+    "total_findings": 1,
+    "high_risk": 1,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 12,
+    "findings": [
+      {
+        "file": "safe_wrapper.c",
+        "line": 9,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'x' passed to command executor system().",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "exp_d_alias": {
+    "scan_id": "053e9be4-ccbe-4993-a9d4-18fa612cbe91",
+    "experiment": "exp_d_alias",
+    "files_in_zip": [
+      "alias_helper.c",
+      "alias_main.c"
+    ],
+    "total_files_scanned": 2,
+    "total_findings": 3,
+    "high_risk": 2,
+    "medium_risk": 1,
+    "low_risk": 0,
+    "scan_duration_ms": 13,
+    "findings": [
+      {
+        "file": "alias_main.c",
+        "line": 15,
+        "column": 5,
+        "vulnerability": "Null Pointer Dereference",
+        "rule_id": "ADV-NULL-001",
+        "cwe": "CWE-476",
+        "severity": "CRITICAL",
+        "confidence": 0.88,
+        "risk_score": 0.94,
+        "analyzer_source": "ast",
+        "analysis_status": "LIKELY",
+        "explanation": "Pointer 'p' allocated by malloc() at line 12 is dereferenced at line 15 without a preceding null check. malloc() can return NULL on allocation failure.",
+        "dataflow_path": [
+          {
+            "step_type": "SOURCE",
+            "line": 12,
+            "column": 0,
+            "code": "    char *p = malloc(32);",
+            "description": "Allocation via malloc() \u2014 may return NULL"
+          },
+          {
+            "step_type": "SINK",
+            "line": 15,
+            "column": 5,
+            "code": "    p[0] = 'A';",
+            "description": "Dereference of 'p' without null check"
+          }
+        ]
+      },
+      {
+        "file": "alias_main.c",
+        "line": 12,
+        "column": 10,
+        "vulnerability": "Memory Leak",
+        "rule_id": "ADV-MEMLEAK-001",
+        "cwe": "CWE-401",
+        "severity": "HIGH",
+        "confidence": 0.72,
+        "risk_score": 0.67,
+        "analyzer_source": "ast",
+        "analysis_status": "LIKELY",
+        "explanation": "Memory allocated via malloc() at line 12 and stored in 'p' is not freed before the function returns.",
+        "dataflow_path": null
+      },
+      {
+        "file": "alias_main.c",
+        "line": 12,
+        "column": 5,
+        "vulnerability": "Memory: Unchecked malloc()",
+        "rule_id": "RULE-MALLOC-CHECK-007",
+        "cwe": "CWE-476",
+        "severity": "MEDIUM",
+        "confidence": 0.65,
+        "risk_score": 0.6,
+        "analyzer_source": "regex",
+        "analysis_status": "LIKELY",
+        "explanation": "malloc() return value may be NULL upon allocation failure; dereferencing without check causes crash.",
+        "dataflow_path": null
+      }
+    ]
+  },
+  "exp_e_struct": {
+    "scan_id": "568cd0c1-961c-4ce2-9ecf-027bf905638c",
+    "experiment": "exp_e_struct",
+    "files_in_zip": [
+      "consumer.c",
+      "data.h",
+      "main.c",
+      "producer.c"
+    ],
+    "total_files_scanned": 4,
+    "total_findings": 3,
+    "high_risk": 3,
+    "medium_risk": 0,
+    "low_risk": 0,
+    "scan_duration_ms": 19,
+    "findings": [
+      {
+        "file": "consumer.c",
+        "line": 10,
+        "column": 5,
+        "vulnerability": "Dynamic Command Execution",
+        "rule_id": "AST-CMD-002",
+        "cwe": "CWE-78",
+        "severity": "CRITICAL",
+        "confidence": 0.98,
+        "risk_score": 1.0,
+        "analyzer_source": "multi_analyzer",
+        "analysis_status": "LIKELY",
+        "explanation": "Dynamic non-constant expression 'd->value' passed to command executor system().",
+        "dataflow_path": null
+      },
+      {
+        "file": "main.c",
+        "line": 14,
+        "column": 14,
+        "vulnerability": "Use of Uninitialized Variable",
+        "rule_id": "CFG-UNINIT-CONFIRMED-001",
+        "cwe": "CWE-457",
+        "severity": "CRITICAL",
+        "confidence": 0.95,
+        "risk_score": 0.89,
+        "analyzer_source": "cfg",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Use of Uninitialized Variable: 'd' is read before being initialized along this execution path.",
+        "dataflow_path": null
+      },
+      {
+        "file": "main.c",
+        "line": 15,
+        "column": 14,
+        "vulnerability": "Use of Uninitialized Variable",
+        "rule_id": "CFG-UNINIT-CONFIRMED-001",
+        "cwe": "CWE-457",
+        "severity": "CRITICAL",
+        "confidence": 0.95,
+        "risk_score": 0.89,
+        "analyzer_source": "cfg",
+        "analysis_status": "CONFIRMED",
+        "explanation": "Use of Uninitialized Variable: 'd' is read before being initialized along this execution path.",
+        "dataflow_path": null
+      }
+    ]
+  }
+}

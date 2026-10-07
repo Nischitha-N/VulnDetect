@@ -1,217 +1,166 @@
-# VulnDetect — AI-Based Code Vulnerability Detection System
+# VulnDetect: Multi-Layer Static Analysis & Finding-Level Verification System
 
-A production-ready web application that detects vulnerabilities in C/C++ code using **static analysis** and **machine learning** (Random Forest + XGBoost ensemble).
+A research-oriented vulnerability detection platform for C/C++ source code combining an **8-layer static analysis architecture** with an **auxiliary machine learning finding verifier** (Random Forest).
 
 ---
 
 ## Architecture
 
+VulnDetect evaluates source code through an eight-layer static analysis pipeline followed by post-processing and auxiliary finding-level machine learning verification:
+
 ```
-vuln-detector/
-├── backend/                  # Python + FastAPI
-│   ├── main.py               # App entry point
-│   ├── app/
-│   │   ├── api/routes.py     # REST endpoints
-│   │   ├── core/
-│   │   │   ├── config.py     # Settings (Pydantic)
-│   │   │   ├── analyzer.py   # ML + rules fusion
-│   │   │   ├── file_scanner.py  # Upload handling, zip traversal
-│   │   │   └── database.py   # MongoDB (Motor async)
-│   │   ├── ml/
-│   │   │   ├── parser.py     # Feature extraction (35 features)
-│   │   │   └── model.py      # RF + XGBoost ensemble training & inference
-│   │   ├── rules/
-│   │   │   └── detector.py   # Rule-based pattern matching
-│   │   └── schemas/
-│   │       └── models.py     # Pydantic response schemas
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── frontend/                 # React 18 + Vite + Tailwind
-│   ├── src/
-│   │   ├── App.jsx           # Root component + routing
-│   │   ├── store.js          # Zustand global state
-│   │   ├── hooks/useScan.js  # Scan orchestration (backend → AI fallback)
-│   │   ├── utils/api.js      # Axios API layer
-│   │   ├── utils/demoData.js # Demo scan fixtures
-│   │   └── components/
-│   │       ├── Header.jsx
-│   │       ├── Sidebar.jsx
-│   │       ├── UploadScreen.jsx   # Drag-and-drop upload
-│   │       ├── ScanScreen.jsx     # Animated progress
-│   │       ├── ResultsScreen.jsx  # Dashboard
-│   │       ├── VulnCard.jsx       # Expandable vulnerability cards
-│   │       └── Charts.jsx         # Bar + donut charts
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   └── Dockerfile
-│
-├── samples/                  # Test C/C++ files
-│   ├── vulnerable_app.c
-│   ├── string_utils.cpp
-│   └── auth_handler.c
-│
-└── docker-compose.yml
+[ C/C++ Source File / ZIP Project ]
+                 │
+                 ▼
+[ Tree-sitter AST & CST Parser (tree-sitter-c / tree-sitter-cpp) ]
+                 │
+                 ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │                  8 STATIC ANALYSIS LAYERS                    │
+ │ 1. RuleAnalyzer (Lexical patterns & dangerous API keywords)  │
+ │ 2. ASTAnalyzer (Syntactic structures & bad sizeof/malloc)    │
+ │ 3. AdvancedASTAnalyzer (State & lifecycle: UAF, NULL deref)  │
+ │ 4. TaintAnalyzer (Source-to-sink untrusted dataflow paths)   │
+ │ 5. RangeAnalyzer (Loop bounds & off-by-one interval checks)  │
+ │ 6. CFGAnalyzer (Control flow graph, reachability, dead code) │
+ │ 7. InterProceduralAnalyzer (Call-graph summary propagation)  │
+ │ 8. CppAnalyzer (RAII semantics, move safety, smart pointers) │
+ └──────────────────────────────────────────────────────────────┘
+                 │
+                 ▼
+[ Finding Deduplicator & Multi-Analyzer Correlator ]
+                 │
+                 ▼
+[ Uncertainty & Ambiguity Analyzer (CONFIRMED / LIKELY / NEEDS_REVIEW) ]
+                 │
+                 ▼
+[ Heuristic Ambiguity Reviewer (Supporting / Contradicting Evidence) ]
+                 │
+                 ▼
+[ Auxiliary ML Finding Verifier (Random Forest Classifier) ]
+  (Non-destructive: attaches verification score & status to findings)
+                 │
+                 ▼
+[ Calibrated Risk Scorer & Output (JSON / OASIS SARIF v2.1.0 / React Dashboard) ]
 ```
 
 ---
 
-## Quick Start
+## Repository Structure
 
-### Option A — Docker Compose (recommended)
-
-```bash
-git clone <repo>
-cd vuln-detector
-docker-compose up --build
+```
+vuln-detector/
+├── backend/
+│   ├── main.py                     # FastAPI application entry point
+│   ├── app/
+│   │   ├── api/routes.py           # REST endpoints (/scan, /scan/{id}, /sarif)
+│   │   ├── core/
+│   │   │   ├── config.py           # Application settings
+│   │   │   ├── analyzer.py         # Analysis bridge to orchestrator
+│   │   │   ├── file_scanner.py     # Safe file & ZIP upload extraction
+│   │   │   ├── security_guard.py   # Security quotas & path traversal protection
+│   │   │   └── database.py         # MongoDB scan persistence
+│   │   ├── engine/                 # 8-layer static analysis pipeline
+│   │   │   ├── parser.py           # Tree-sitter AST parser
+│   │   │   ├── rule_analyzer.py    # Layer 1: Lexical & regex patterns
+│   │   │   ├── ast_analyzer.py     # Layer 2: Syntactic AST analyzer
+│   │   │   ├── advanced_ast_analyzer.py # Layer 3: Lifecycle state tracker
+│   │   │   ├── taint_analyzer.py   # Layer 4: Source-to-sink taint engine
+│   │   │   ├── range_analyzer.py   # Layer 5: Integer interval & off-by-one
+│   │   │   ├── cfg_analyzer.py     # Layer 6: Control flow graph analysis
+│   │   │   ├── ipa_analyzer.py     # Layer 7: Interprocedural summary engine
+│   │   │   ├── cpp_analyzer.py     # Layer 8: Modern C++ RAII analyzer
+│   │   │   ├── deduplicator.py     # Multi-layer finding deduplication
+│   │   │   ├── uncertainty_analyzer.py # Certainty classification
+│   │   │   ├── heuristic_reviewer.py   # Heuristic ambiguity reviewer
+│   │   │   └── scorer.py           # Calibrated risk scorer
+│   │   ├── ml/                     # Auxiliary ML finding verifier
+│   │   │   ├── feature_extractor.py # 12 finding-level numerical features
+│   │   │   ├── predictor.py        # Non-destructive finding triage inference
+│   │   │   ├── train.py            # Model training & evaluation pipeline
+│   │   │   ├── dataset/            # 56 curated finding-level samples
+│   │   │   └── models/             # Trained final_model.joblib & metadata
+│   │   ├── sarif/sarif.py          # OASIS SARIF v2.1.0 exporter
+│   │   └── schemas/models.py       # Pydantic data models
+│   ├── tests/                      # 128 automated unit & regression tests
+│   │   └── benchmark/              # 24-case static benchmark & runner
+│   └── Dockerfile
+│
+├── frontend/                       # React 18 + Vite dashboard
+│   ├── src/
+│   │   ├── App.jsx                 # Application shell
+│   │   ├── store.js                # State store
+│   │   ├── hooks/useScan.js        # Scan API dispatch
+│   │   ├── components/             # Dashboard, Upload, Results, VulnCard
+│   │   └── utils/api.js            # Axios client
+│   └── package.json
+│
+├── docs/research/                  # Research evaluation & documentation
+│   ├── final_evaluation.md         # Full research evaluation report
+│   ├── results/                    # Machine-readable evaluation JSONs
+│   ├── viva_guide.md               # Oral defense (viva) guide
+│   └── project_summary.md          # Project summary
+│
+└── samples/                        # Test C/C++ sample files
+    ├── vulnerable_app.c
+    ├── auth_handler.c
+    ├── string_utils.cpp
+    └── advanced_vulns.c
 ```
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API docs: http://localhost:8000/docs
-- MongoDB: localhost:27017
+---
 
-### Option B — Local development
+## Machine Learning Verification Component
 
-**Backend**
+The ML verifier operates exclusively on candidate findings produced by the static analysis pipeline:
+
+- **Role:** Auxiliary finding-level triage (verification score: $P(\text{Valid Finding} \mid \text{Static Features})$).
+- **Architectural Invariant:** Static analysis is authoritative for detection. ML never suppresses, removes, or modifies static findings.
+- **Model:** `RandomForestClassifier` (`n_estimators=100`, `max_depth=5`, `class_weight='balanced'`, `random_state=42`).
+- **Features:** 12 numerical features derived from finding attributes, dataflow paths, AST context, and engine confidence.
+- **Supported Families:** `CWE-78` (Command Injection), `CWE-416` (Use-After-Free), `CWE-193` (Off-by-One), `CWE-134` (Format String). Unsupported CWEs bypass ML with `status="NOT_SUPPORTED"`.
+
+---
+
+## Experimental Results Summary
+
+### Static Analysis Benchmark (24-Case Curated Benchmark)
+- **Baseline Regex:** Precision = 100.0%, Recall = 42.9%, F1 = 60.0%
+- **Full Static Engine:** Precision = 100.0%, Recall = 85.7%, F1 = **92.3%**
+- *Note:* Both apparent false negatives (C2, J1) were detected as root-cause `CWE-193` by the Range Analyzer; exact-CWE scoring is retained for evaluation rigor.
+
+### Auxiliary ML Verifier (Held-Out Test Set, 12 Samples)
+- **Held-Out Test F1:** **0.7273**
+- **Held-Out Test ROC-AUC:** **0.8750**
+- **Test Confusion Matrix:** TN = 5, FP = 1, FN = 2, TP = 4
+
+---
+
+## Getting Started
+
+### Local Development
+
+**Backend:**
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Start MongoDB (or use Atlas URI in .env)
-mongod --dbpath /tmp/mongo &
+# Run backend test suite (128 tests)
+pytest tests -v
 
-# Run dev server
+# Start development server
 uvicorn main:app --reload --port 8000
 ```
 
-**Frontend**
+**Frontend:**
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:3000
+npm run dev
 ```
 
----
-
-## ML Model
-
-### Features (35 total per line)
-- **Unsafe API flags** — `has_gets`, `has_strcpy`, `has_sprintf`, `has_scanf`, `has_system`, etc.
-- **Safe alternative proximity** — `safe_fgets_nearby`, `safe_snprintf_nearby`, …
-- **Memory operation flags** — `mem_malloc`, `mem_free`, `mem_realloc`, …
-- **Structural features** — `ptr_deref`, `has_format_string`, `has_cast`, `line_length`, `paren_depth`
-- **Bounds-check presence** — `has_null_check`, `has_bounds_check`, `has_large_index`
-
-### Ensemble
-| Model | Weight | Notes |
-|-------|--------|-------|
-| Random Forest (200 trees, depth 10) | 45% | Low variance, calibrated probabilities |
-| XGBoost (150 rounds, lr=0.1)        | 55% | Better on non-linear feature interactions |
-
-### Risk fusion
-```
-final_risk = 0.60 × rule_base_risk + 0.40 × ml_score
-# Boosted ×1.15 when both agree risk > 0.70 (capped at 1.0)
-```
-
----
-
-## API Reference
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/scan` | Upload `.c`, `.cpp`, `.h`, `.hpp`, or `.zip` |
-| `GET`  | `/api/v1/scan/{id}` | Retrieve stored scan result |
-| `GET`  | `/api/v1/scans` | List recent scans (summaries) |
-| `GET`  | `/api/v1/health` | Health check |
-
-### Response format
-```json
-{
-  "scan_id": "uuid",
-  "timestamp": "2025-01-01T00:00:00Z",
-  "summary": {
-    "total_files": 1,
-    "total_vulnerabilities": 7,
-    "high_risk": 4,
-    "medium_risk": 2,
-    "low_risk": 1,
-    "scan_duration_ms": 312,
-    "vulnerability_types": { "Unsafe API: gets()": 1, "...": 2 }
-  },
-  "results": [
-    {
-      "file": "vulnerable_app.c",
-      "line": 12,
-      "vulnerability": "Unsafe API: gets()",
-      "risk_score": 0.95,
-      "severity": "CRITICAL",
-      "explanation": "gets() reads input with no bounds checking...",
-      "fix": "Replace gets(buf) with fgets(buf, sizeof(buf), stdin)...",
-      "code_snippet": "10: char buffer[64];\n11: printf(...);\n12: gets(buffer);"
-    }
-  ]
-}
-```
-
----
-
-## Detected Vulnerabilities
-
-| Pattern | Severity | Risk Score |
-|---------|----------|-----------|
-| `gets()` | CRITICAL | 0.95 |
-| `printf(var)` format string | CRITICAL | 0.90 |
-| `system()` with user input | CRITICAL | 0.88–0.92 |
-| `scanf("%s", ...)` | HIGH | 0.85 |
-| `strcpy()` | HIGH | 0.80–0.88 |
-| `strcat()` | HIGH | 0.78–0.82 |
-| Double `free()` | HIGH | 0.82 |
-| `sprintf()` | HIGH | 0.75–0.85 |
-| `memcpy()` without bounds | MEDIUM | 0.65–0.70 |
-| Unchecked `malloc()` | MEDIUM | 0.50–0.60 |
-| Fixed char buffer | LOW | 0.28–0.35 |
-
----
-
-## Fix Mappings
-
-| Unsafe | Safe replacement |
-|--------|-----------------|
-| `gets(buf)` | `fgets(buf, sizeof(buf), stdin)` |
-| `strcpy(d, s)` | `strncpy(d, s, sizeof(d)-1)` |
-| `strcat(d, s)` | `strncat(d, s, sizeof(d)-strlen(d)-1)` |
-| `sprintf(b, f, ...)` | `snprintf(b, sizeof(b), f, ...)` |
-| `scanf("%s", b)` | `scanf("%255s", b)` or `fgets()` |
-| `printf(var)` | `printf("%s", var)` |
-| `system(cmd)` | `execve()` with arg array |
-
----
-
-## Environment Variables
-
-```env
-# backend/.env
-MONGO_URI=mongodb://localhost:27017
-MONGO_DB=vuln_detector
-DEBUG=true
-MAX_FILE_SIZE_MB=50
-```
-
----
-
-## Testing with samples
-
-```bash
-# Single file
-curl -X POST http://localhost:8000/api/v1/scan \
-  -F "file=@samples/vulnerable_app.c"
-
-# Zip folder
-zip -r samples.zip samples/
-curl -X POST http://localhost:8000/api/v1/scan \
-  -F "file=@samples.zip"
-```
+- Web UI: `http://localhost:3000`
+- API Documentation: `http://localhost:8000/docs`
+- SARIF Export: `GET /api/v1/scan/{scan_id}/sarif`

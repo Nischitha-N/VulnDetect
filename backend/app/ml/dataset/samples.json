@@ -1,0 +1,1122 @@
+[
+  {
+    "sample_id": "SMP-CWE78-001",
+    "group_id": "GRP-CWE78-DIRECT-TAINT",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_direct_taint",
+    "expected_rule": "TAINT-SYSTEM-001",
+    "analyzer_source": "taint",
+    "description": "Direct flow from getenv() to system() with no validation.",
+    "rationale": "Genuine vulnerability: untrusted environment variable is passed directly to command execution sink.",
+    "code_snippet": "system(cmd); // VULNERABLE: Direct getenv() -> system()",
+    "code": "void test_direct_taint(void) {\n    char *cmd = getenv(\"USER_CMD\");\n    system(cmd);\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-002",
+    "group_id": "GRP-CWE78-DIRECT-TAINT",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_direct_const_var",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Static constant string variable passed to system().",
+    "rationale": "Benign finding: AST analyzer flags dynamic command execution because argument is an identifier, but variable holds an immutable string literal.",
+    "code_snippet": "const char *cmd = \"uname -a\"; system(cmd);",
+    "code": "void test_direct_const_var(void) {\n    const char *cmd = \"uname -a\";\n    system(cmd);\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-003",
+    "group_id": "GRP-CWE78-MULTISTEP-POPEN",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_multistep_sprintf",
+    "expected_rule": "TAINT-POPEN-001",
+    "analyzer_source": "taint",
+    "description": "Multi-step fgets() -> sprintf() -> popen() command pipeline.",
+    "rationale": "Genuine vulnerability: external stdin input formatted into shell command string executed by popen().",
+    "code_snippet": "popen(cmd, \"r\"); // VULNERABLE: fgets() -> sprintf() -> popen()",
+    "code": "void test_multistep_sprintf(void) {\n    char input[128];\n    char cmd[256];\n    fgets(input, sizeof(input), stdin);\n    sprintf(cmd, \"echo %s\", input);\n    popen(cmd, \"r\");\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 3,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-004",
+    "group_id": "GRP-CWE78-MULTISTEP-POPEN",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_multistep_sprintf_int",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Integer-formatted command string passed to popen().",
+    "rationale": "Benign finding: AST analyzer flags dynamic popen(), but the interpolated parameter is a strictly typed integer (pid) incapable of shell metacharacter injection.",
+    "code_snippet": "sprintf(cmd, \"kill -9 %d\", pid); popen(cmd, \"r\");",
+    "code": "void test_multistep_sprintf_int(int pid) {\n    char cmd[64];\n    sprintf(cmd, \"kill -9 %d\", pid);\n    popen(cmd, \"r\");\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-005",
+    "group_id": "GRP-CWE78-SANITIZER-UNCERTAIN",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_custom_sanitizer_inadequate",
+    "expected_rule": "TAINT-SYSTEM-001",
+    "analyzer_source": "taint",
+    "description": "Custom filter strips quotes only; unvalidated command passed to system().",
+    "rationale": "Genuine vulnerability: incomplete sanitizer does not neutralize shell metacharacters such as semicolons, pipes, or command substitutions.",
+    "code_snippet": "strip_quotes(input); system(input);",
+    "code": "void test_custom_sanitizer_inadequate(void) {\n    char *input = getenv(\"PARAM\");\n    strip_quotes(input);\n    system(input);\n}",
+    "evidence_metadata": {
+      "confidence": 0.7,
+      "analysis_status": "NEEDS_REVIEW",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-006",
+    "group_id": "GRP-CWE78-SANITIZER-UNCERTAIN",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_custom_sanitizer_uncertain",
+    "expected_rule": "TAINT-SYSTEM-001",
+    "analyzer_source": "taint",
+    "description": "Input passed through strict alphanumeric allowlist filter before system().",
+    "rationale": "Benign finding: static analyzer flags NEEDS_REVIEW due to custom filter function, but filter strictly enforces an alphanumeric whitelist.",
+    "code_snippet": "custom_filter(user_input); system(user_input);",
+    "code": "void test_custom_sanitizer_uncertain(void) {\n    char *user_input = getenv(\"UNTRUSTED\");\n    custom_filter(user_input);\n    system(user_input);\n}",
+    "evidence_metadata": {
+      "confidence": 0.7,
+      "analysis_status": "NEEDS_REVIEW",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-007",
+    "group_id": "GRP-CWE78-ALIAS-TAINT",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_alias_propagation",
+    "expected_rule": "TAINT-SYSTEM-001",
+    "analyzer_source": "taint",
+    "description": "Taint propagated through a chain of pointer aliases to system().",
+    "rationale": "Genuine vulnerability: pointer aliasing obscures tainted dataflow, resulting in execution of untrusted input.",
+    "code_snippet": "char *alias2 = alias1; system(alias2);",
+    "code": "void test_alias_propagation(void) {\n    char *orig = getenv(\"EXEC_NAME\");\n    char *alias1 = orig;\n    char *alias2 = alias1;\n    system(alias2);\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 4,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-008",
+    "group_id": "GRP-CWE78-ALIAS-TAINT",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_alias_safe_literal",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Alias chain pointing to static string literal passed to system().",
+    "rationale": "Benign finding: AST analyzer flags variable alias indirection, but pointed-to memory is an immutable constant literal string.",
+    "code_snippet": "char *alias2 = alias1; system(alias2);",
+    "code": "void test_alias_safe_literal(void) {\n    char *orig = \"uptime\";\n    char *alias1 = orig;\n    char *alias2 = alias1;\n    system(alias2);\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-009",
+    "group_id": "GRP-CWE78-STRUCT-FIELD",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_struct_field_taint",
+    "expected_rule": "TAINT-SYSTEM-001",
+    "analyzer_source": "taint",
+    "description": "Taint propagated through struct field to system().",
+    "rationale": "Genuine vulnerability: tainted environment variable copied into struct field and executed via system().",
+    "code_snippet": "strcpy(req.command, env_val); system(req.command);",
+    "code": "void test_struct_field_taint(void) {\n    struct UserRequest req;\n    char *env_val = getenv(\"REQ_CMD\");\n    strcpy(req.command, env_val);\n    system(req.command);\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 3,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-010",
+    "group_id": "GRP-CWE78-STRUCT-FIELD",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_struct_field_const",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Struct field initialized with constant literal passed to system().",
+    "rationale": "Benign finding: AST analyzer flags dynamic command execution on struct field identifier, but content is entirely static.",
+    "code_snippet": "strcpy(req.command, \"/bin/sync\"); system(req.command);",
+    "code": "void test_struct_field_const(void) {\n    struct UserRequest req;\n    strcpy(req.command, \"/bin/sync\");\n    system(req.command);\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-011",
+    "group_id": "GRP-CWE78-INTERPROCEDURAL",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/ipa_fixtures.c",
+    "function_name": "test_interprocedural_command_injection",
+    "expected_rule": "IPA-TAINT-SYSTEM-001",
+    "analyzer_source": "ipa",
+    "description": "Cross-function taint from get_input() helper to execute() sink.",
+    "rationale": "Genuine vulnerability: tainted return value from helper flows across function boundaries into shell execution sink.",
+    "code_snippet": "char *cmd = get_input(); execute(cmd);",
+    "code": "void test_interprocedural_command_injection(void) {\n    char *cmd = get_input();\n    execute(cmd);\n}",
+    "evidence_metadata": {
+      "confidence": 0.98,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 3,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-012",
+    "group_id": "GRP-CWE78-INTERPROCEDURAL",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/experimental/cross_file_ipa/controls/single_file_safe.c",
+    "function_name": "safe_wrapper",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Wrapper function executes system(x) where all callers supply constant literals.",
+    "rationale": "Benign finding: AST analyzer analyzes wrapper in isolation and flags system(x) as dynamic command execution, but whole-program context proves argument is constant literal.",
+    "code_snippet": "void safe_wrapper(const char *x) { system(x); }",
+    "code": "void safe_wrapper(const char *x) {\n    system(x);\n}\nint main(void) {\n    safe_wrapper(\"ls -la\");\n    return 0;\n}",
+    "evidence_metadata": {
+      "confidence": 0.98,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-013",
+    "group_id": "GRP-CWE78-EXECVE-DISPATCH",
+    "cwe": "CWE-78",
+    "label": 1,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_execvp_tainted_name",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Untrusted binary name from getenv() passed to execvp().",
+    "rationale": "Genuine vulnerability: untrusted executable name allows path hijacking and execution of arbitrary binaries.",
+    "code_snippet": "char *tool = getenv(\"TOOL\"); execvp(tool, args);",
+    "code": "void test_execvp_tainted_name(char **args) {\n    char *tool = getenv(\"TOOL\");\n    execvp(tool, args);\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE78-014",
+    "group_id": "GRP-CWE78-EXECVE-DISPATCH",
+    "cwe": "CWE-78",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "test_execve_fixed_path",
+    "expected_rule": "AST-CMD-002",
+    "analyzer_source": "ast",
+    "description": "Fixed absolute path with compile-time argument array passed to execve().",
+    "rationale": "Benign finding: AST analyzer flags execve() call with identifier array, but binary path is absolute and arguments are compile-time constants.",
+    "code_snippet": "execve(args[0], args, envp);",
+    "code": "void test_execve_fixed_path(char **envp) {\n    char *args[] = {\"/usr/bin/git\", \"status\", NULL};\n    execve(args[0], args, envp);\n}",
+    "evidence_metadata": {
+      "confidence": 0.93,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-015",
+    "group_id": "GRP-CWE416-DIRECT-UAF",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "vulnerable_uaf",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Direct read access of heap buffer immediately following free().",
+    "rationale": "Genuine vulnerability: reading from buffer after it has been returned to heap memory allocator.",
+    "code_snippet": "free(buf); printf(\"%c\\n\", buf[0]);",
+    "code": "void vulnerable_uaf(void) {\n    char *buf = (char *)malloc(64);\n    if (!buf) return;\n    free(buf);\n    printf(\"%c\\n\", buf[0]);\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-016",
+    "group_id": "GRP-CWE416-DIRECT-UAF",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "safe_uaf_realloc",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Pointer reallocated with fresh malloc() before subsequent dereference.",
+    "rationale": "Benign finding: naive AST tracker flags pointer because free() occurred earlier in function, but variable was reassigned valid memory before use.",
+    "code_snippet": "free(buf); buf = malloc(64); printf(\"%c\\n\", buf[0]);",
+    "code": "void safe_uaf_realloc(void) {\n    char *buf = (char *)malloc(64);\n    if (!buf) return;\n    free(buf);\n    buf = (char *)malloc(64);\n    if (!buf) return;\n    printf(\"%c\\n\", buf[0]);\n    free(buf);\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-017",
+    "group_id": "GRP-CWE416-BRANCH-DISJOINT",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "vulnerable_branch_fallthrough",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Free inside error branch with missing return falls through to dereference.",
+    "rationale": "Genuine vulnerability: when condition triggers free(), execution continues into unguarded dereference statement.",
+    "code_snippet": "if (err) { free(p); } *p = 5;",
+    "code": "void vulnerable_branch_fallthrough(int err) {\n    int *p = malloc(sizeof(int));\n    if (!p) return;\n    if (err) {\n        free(p);\n    }\n    *p = 5;\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-018",
+    "group_id": "GRP-CWE416-BRANCH-DISJOINT",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "safe_branch_disjoint",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Free occurs in early-exit branch; dereference only occurs in alternate branch.",
+    "rationale": "Benign finding: AST analyzer flags UAF because free(p) appears before *p linearly, but control flow returns early so the dereference path is mutually exclusive.",
+    "code_snippet": "if (cond) { free(p); return; } else { printf(\"%c\\n\", p[0]); free(p); }",
+    "code": "void safe_branch_disjoint(int cond) {\n    char *p = malloc(32);\n    if (!p) return;\n    if (cond) {\n        free(p);\n        return;\n    } else {\n        printf(\"%c\\n\", p[0]);\n        free(p);\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.99,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-019",
+    "group_id": "GRP-CWE416-ALIAS-UAF",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/experimental/cross_file_ipa/controls/single_file_alias.c",
+    "function_name": "test_alias_uaf",
+    "expected_rule": "IPA-UAF-001",
+    "analyzer_source": "ipa",
+    "description": "Primary pointer freed, subsequent access occurs through aliased pointer.",
+    "rationale": "Genuine vulnerability: pointer q aliases pointer p; freeing p leaves q dangling.",
+    "code_snippet": "free(p); *q = 1;",
+    "code": "void test_alias_uaf(void) {\n    int *p = malloc(sizeof(int));\n    int *q = p;\n    free(p);\n    *q = 1;\n}",
+    "evidence_metadata": {
+      "confidence": 0.98,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-020",
+    "group_id": "GRP-CWE416-ALIAS-UAF",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/experimental/cross_file_ipa/controls/single_file_alias.c",
+    "function_name": "safe_independent_buffers",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Two distinct buffers; freeing first does not invalidate second.",
+    "rationale": "Benign finding: false positive if variable names or imprecise alias set conflates independent allocations.",
+    "code_snippet": "free(p); *q = 1; free(q);",
+    "code": "void safe_independent_buffers(void) {\n    int *p = malloc(sizeof(int));\n    int *q = malloc(sizeof(int));\n    if (!p || !q) return;\n    free(p);\n    *q = 1;\n    free(q);\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-021",
+    "group_id": "GRP-CWE416-INTERPROCEDURAL",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/ipa_fixtures.c",
+    "function_name": "test_interprocedural_uaf",
+    "expected_rule": "IPA-UAF-001",
+    "analyzer_source": "ipa",
+    "description": "Buffer freed in helper function, then dereferenced in caller.",
+    "rationale": "Genuine vulnerability: memory deallocated across procedure boundary inside helper free_buffer() is accessed via *p in caller.",
+    "code_snippet": "free_buffer(p); *p = 1; // VULNERABLE: Inter-procedural UAF",
+    "code": "void test_interprocedural_uaf(void) {\n    char *p = malloc(10);\n    free_buffer(p);\n    *p = 1;\n}",
+    "evidence_metadata": {
+      "confidence": 0.98,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-022",
+    "group_id": "GRP-CWE416-INTERPROCEDURAL",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/ipa_fixtures.c",
+    "function_name": "safe_interprocedural_cleanup",
+    "expected_rule": "IPA-UAF-001",
+    "analyzer_source": "ipa",
+    "description": "Caller resets pointer to NULL and guards dereference after helper free.",
+    "rationale": "Benign finding: IPA analyzer notes callee frees argument, but caller clears pointer and checks it before any subsequent access.",
+    "code_snippet": "free_buffer(p); p = NULL; if (p) *p = 1;",
+    "code": "void safe_interprocedural_cleanup(void) {\n    char *p = malloc(10);\n    free_buffer(p);\n    p = NULL;\n    if (p) *p = 1;\n}",
+    "evidence_metadata": {
+      "confidence": 0.98,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-023",
+    "group_id": "GRP-CWE416-STRUCT-MEMBER",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "vulnerable_struct_member_uaf",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Struct freed, then member field accessed for return value.",
+    "rationale": "Genuine vulnerability: reading node->val accesses heap memory belonging to freed struct allocation.",
+    "code_snippet": "free(node); return node->val;",
+    "code": "int vulnerable_struct_member_uaf(struct Node *node) {\n    free(node);\n    return node->val;\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-024",
+    "group_id": "GRP-CWE416-STRUCT-MEMBER",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "safe_struct_member_cache",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Struct member value cached in local variable before struct is freed.",
+    "rationale": "Benign finding: AST expression visitor flags node identifier in cleanup block, but field was safely read into local variable prior to free.",
+    "code_snippet": "int val = node->val; free(node); return val;",
+    "code": "int safe_struct_member_cache(struct Node *node) {\n    int val = node->val;\n    free(node);\n    return val;\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-025",
+    "group_id": "GRP-CWE416-LOGGING-POINTER",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "vulnerable_uaf_printf_deref",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Freed buffer passed to printf() with string dereference format %s.",
+    "rationale": "Genuine vulnerability: %s format specifier dereferences freed memory address, triggering heap corruption or crash.",
+    "code_snippet": "free(ptr); printf(\"Message: %s\\n\", ptr);",
+    "code": "void vulnerable_uaf_printf_deref(char *ptr) {\n    free(ptr);\n    printf(\"Message: %s\\n\", ptr);\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-026",
+    "group_id": "GRP-CWE416-LOGGING-POINTER",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "safe_uaf_printf_address",
+    "expected_rule": "ADV-UAF-001",
+    "analyzer_source": "ast",
+    "description": "Freed pointer passed to printf() with %p for pointer address logging only.",
+    "rationale": "Benign finding: AST analyzer flags pointer use in call argument list, but %p logs the numerical address without dereferencing heap contents.",
+    "code_snippet": "free(p); printf(\"Freed ptr: %p\\n\", (void*)p);",
+    "code": "void safe_uaf_printf_address(void) {\n    char *p = malloc(32);\n    if (!p) return;\n    free(p);\n    printf(\"Freed ptr: %p\\n\", (void*)p);\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-027",
+    "group_id": "GRP-CWE416-RETURN-FREED",
+    "cwe": "CWE-416",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "vulnerable_return_freed_ptr",
+    "expected_rule": "ADV-UAF-RETURN-001",
+    "analyzer_source": "ast",
+    "description": "Function returns dangling pointer after freeing it.",
+    "rationale": "Genuine vulnerability: caller receiving returned pointer receives an invalid heap address prone to subsequent UAF.",
+    "code_snippet": "free(res); return res;",
+    "code": "char *vulnerable_return_freed_ptr(void) {\n    char *res = malloc(64);\n    free(res);\n    return res;\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE416-028",
+    "group_id": "GRP-CWE416-RETURN-FREED",
+    "cwe": "CWE-416",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_416_use_after_free.c",
+    "function_name": "safe_return_null_after_free",
+    "expected_rule": "ADV-UAF-RETURN-001",
+    "analyzer_source": "ast",
+    "description": "Pointer reset to NULL before return to signal deallocation.",
+    "rationale": "Benign finding: AST analyzer records free(res) but return value is explicitly reset to NULL.",
+    "code_snippet": "free(res); res = NULL; return res;",
+    "code": "char *safe_return_null_after_free(void) {\n    char *res = malloc(64);\n    free(res);\n    res = NULL;\n    return res;\n}",
+    "evidence_metadata": {
+      "confidence": 0.9,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-029",
+    "group_id": "GRP-CWE193-FOR-LEQ",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_loop_off_by_one",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "For loop with <= capacity accesses index equal to array capacity.",
+    "rationale": "Genuine vulnerability: array of size 10 has valid indices 0..9; iteration at i=10 writes out of bounds.",
+    "code_snippet": "for (int i = 0; i <= 10; i++) buffer[i] = i;",
+    "code": "void vulnerable_loop_off_by_one(void) {\n    int buffer[10];\n    for (int i = 0; i <= 10; i++) {\n        buffer[i] = i;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-030",
+    "group_id": "GRP-CWE193-FOR-LEQ",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_loop_break_at_cap",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "For loop header has <= 10, but inner break statement stops at index 10.",
+    "rationale": "Benign finding: range analyzer flags header condition i <= 10, but internal break guard prevents OOB write.",
+    "code_snippet": "for (int i = 0; i <= 10; i++) { if (i == 10) break; arr[i] = i; }",
+    "code": "void safe_loop_break_at_cap(void) {\n    int arr[10];\n    for (int i = 0; i <= 10; i++) {\n        if (i == 10) break;\n        arr[i] = i;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-031",
+    "group_id": "GRP-CWE193-STRING-TERMINATOR",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_str_off_by_one",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Character loop fills N+1 bytes into N-byte buffer without room for null.",
+    "rationale": "Genuine vulnerability: <= 8 on char buf[8] writes 9 bytes, corrupting stack metadata.",
+    "code_snippet": "for (int i = 0; i <= 8; i++) buf[i] = 'A';",
+    "code": "void vulnerable_str_off_by_one(void) {\n    char buf[8];\n    for (int i = 0; i <= 8; i++) {\n        buf[i] = 'A';\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-032",
+    "group_id": "GRP-CWE193-STRING-TERMINATOR",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_str_null_slot_reserved",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Buffer sized to N+1 elements; loop indexing 0..N properly terminates string.",
+    "rationale": "Benign finding: capacity is 9; loop writes data into 0..7 and places terminator at 8, entirely within valid bounds.",
+    "code_snippet": "char buf[9]; for (int i = 0; i <= 8; i++) { buf[i] = (i < 8) ? 'A' : 0; }",
+    "code": "void safe_str_null_slot_reserved(void) {\n    char buf[9];\n    for (int i = 0; i <= 8; i++) {\n        buf[i] = (i < 8) ? 'A' : '\\0';\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-033",
+    "group_id": "GRP-CWE193-WHILE-LEQ",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_while_off_by_one",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "While loop condition i <= 5 writes to arr[5] on 5-element array.",
+    "rationale": "Genuine vulnerability: while loop boundary allows index to match buffer size, writing out of bounds.",
+    "code_snippet": "while (i <= 5) { arr[i] = 1; i++; }",
+    "code": "void vulnerable_while_off_by_one(void) {\n    int arr[5];\n    int i = 0;\n    while (i <= 5) {\n        arr[i] = 1;\n        i++;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-034",
+    "group_id": "GRP-CWE193-WHILE-LEQ",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_while_early_exit",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "While loop checks i >= 5 break inside loop body before access.",
+    "rationale": "Benign finding: loop header uses <= 5, but early break guard inside loop guarantees arr[5] is never reached.",
+    "code_snippet": "while (i <= 5) { if (i >= 5) break; arr[i] = 1; i++; }",
+    "code": "void safe_while_early_exit(void) {\n    int arr[5];\n    int i = 0;\n    while (i <= 5) {\n        if (i >= 5) break;\n        arr[i] = 1;\n        i++;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-035",
+    "group_id": "GRP-CWE193-OFFSET-PLUS-ONE",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_offset_plus_one",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Loop condition i < 10 but body accesses a[i + 1], indexing a[10].",
+    "rationale": "Genuine vulnerability: offset increment inside subscript expression pushes index to capacity on final iteration.",
+    "code_snippet": "for (int i = 0; i < 10; i++) a[i + 1] = i;",
+    "code": "void vulnerable_offset_plus_one(void) {\n    int a[10];\n    for (int i = 0; i < 10; i++) {\n        a[i + 1] = i;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-036",
+    "group_id": "GRP-CWE193-OFFSET-PLUS-ONE",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_offset_guarded",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Subscript expression i + 1 checked against bounds before memory write.",
+    "rationale": "Benign finding: range analyzer flags index expression i+1, but explicit if-guard prevents access when i+1 >= 10.",
+    "code_snippet": "if (i + 1 < 10) a[i + 1] = i;",
+    "code": "void safe_offset_guarded(void) {\n    int a[10];\n    for (int i = 0; i < 10; i++) {\n        if (i + 1 < 10) {\n            a[i + 1] = i;\n        }\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.85,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-037",
+    "group_id": "GRP-CWE193-DECREMENT-LOOP",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_decrement_off_by_one",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Countdown loop initializes at capacity: for (i = 10; i >= 0; i--).",
+    "rationale": "Genuine vulnerability: initial loop iteration attempts write to a[10] on 10-element array.",
+    "code_snippet": "for (int i = 10; i >= 0; i--) a[i] = 0;",
+    "code": "void vulnerable_decrement_off_by_one(void) {\n    int a[10];\n    for (int i = 10; i >= 0; i--) {\n        a[i] = 0;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-038",
+    "group_id": "GRP-CWE193-DECREMENT-LOOP",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_decrement_precheck",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Countdown loop initializes at capacity but indexes a[i - 1].",
+    "rationale": "Benign finding: analyzer flags loop starting at i=10, but subscript expression accesses i-1, mapping exactly to [9, 0].",
+    "code_snippet": "for (int i = 10; i > 0; i--) a[i - 1] = 0;",
+    "code": "void safe_decrement_precheck(void) {\n    int a[10];\n    for (int i = 10; i > 0; i--) {\n        a[i - 1] = 0;\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.85,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-039",
+    "group_id": "GRP-CWE193-COPY-BOUND",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_copy_loop_bound",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Manual copy loop iterates <= sizeof(dst), writing N+1 bytes.",
+    "rationale": "Genuine vulnerability: copy loop bounds allow writing 17 elements into 16-element destination array.",
+    "code_snippet": "for (int i = 0; i <= 16; i++) dst[i] = src[i];",
+    "code": "void vulnerable_copy_loop_bound(char *src) {\n    char dst[16];\n    for (int i = 0; i <= 16; i++) {\n        dst[i] = src[i];\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-040",
+    "group_id": "GRP-CWE193-COPY-BOUND",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_copy_loop_sentinel",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Copy loop checks null byte and clamp index 15 before copying.",
+    "rationale": "Benign finding: loop header specifies <= 16, but internal sentinel check breaks before index 16 can be written.",
+    "code_snippet": "if (src[i] == '\\0' || i == 15) { dst[i] = '\\0'; break; } dst[i] = src[i];",
+    "code": "void safe_copy_loop_sentinel(char *src) {\n    char dst[16];\n    for (int i = 0; i <= 16; i++) {\n        if (src[i] == '\\0' || i == 15) {\n            dst[i] = '\\0';\n            break;\n        }\n        dst[i] = src[i];\n    }\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-041",
+    "group_id": "GRP-CWE193-LOOKAHEAD-PEAK",
+    "cwe": "CWE-193",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "vulnerable_lookahead_peak",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Loop compares a[i] with a[i + 1] without subtracting 1 from upper bound.",
+    "rationale": "Genuine vulnerability: on final iteration i = 11 of 12-element array, a[i+1] reads unallocated stack memory at a[12].",
+    "code_snippet": "for (int i = 0; i < 12; i++) if (a[i] == a[i + 1]) return 1;",
+    "code": "int vulnerable_lookahead_peak(void) {\n    int a[12];\n    for (int i = 0; i < 12; i++) {\n        if (a[i] == a[i + 1]) return 1;\n    }\n    return 0;\n}",
+    "evidence_metadata": {
+      "confidence": 0.95,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 1,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE193-042",
+    "group_id": "GRP-CWE193-LOOKAHEAD-PEAK",
+    "cwe": "CWE-193",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_125_787_range_bounds.c",
+    "function_name": "safe_lookahead_clamped",
+    "expected_rule": "RANGE-LOOP-OFFBYONE",
+    "analyzer_source": "range",
+    "description": "Lookahead expression clamped with ternary operator before read.",
+    "rationale": "Benign finding: range analyzer flags adjacent lookahead pattern, but ternary operator guards against exceeding bound.",
+    "code_snippet": "int next = (i + 1 < 12) ? a[i + 1] : 0;",
+    "code": "int safe_lookahead_clamped(void) {\n    int a[12];\n    for (int i = 0; i < 12; i++) {\n        int next = (i + 1 < 12) ? a[i + 1] : 0;\n        if (a[i] == next) return 1;\n    }\n    return 0;\n}",
+    "evidence_metadata": {
+      "confidence": 0.85,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-043",
+    "group_id": "GRP-CWE134-DIRECT-PRINTF",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_format_string",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Direct user message passed as format argument to printf().",
+    "rationale": "Genuine vulnerability: user-controlled string passed directly as format argument enables arbitrary memory reads and writes via %n.",
+    "code_snippet": "printf(user_msg); // BAD: Non-literal format string passed directly",
+    "code": "void vulnerable_format_string(char *user_msg) {\n    printf(user_msg);\n}",
+    "evidence_metadata": {
+      "confidence": 0.99,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-044",
+    "group_id": "GRP-CWE134-DIRECT-PRINTF",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_format_const_var",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Constant immutable string variable passed to printf().",
+    "rationale": "Benign finding: AST analyzer flags non-literal identifier node, but the variable is an immutable compile-time string with no conversion specifiers.",
+    "code_snippet": "const char *msg = \"Safe log message\\n\"; printf(msg);",
+    "code": "void safe_format_const_var(void) {\n    const char *msg = \"Safe log message\\n\";\n    printf(msg);\n}",
+    "evidence_metadata": {
+      "confidence": 0.99,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-045",
+    "group_id": "GRP-CWE134-REGEX-SPRINTF",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_sprintf_dynamic_fmt",
+    "expected_rule": "TAINT-SPRINTF-001",
+    "analyzer_source": "taint",
+    "description": "Format string argument loaded from getenv() and passed to sprintf().",
+    "rationale": "Genuine vulnerability: untrusted format string parameter in sprintf() allows stack inspection and buffer overflow.",
+    "code_snippet": "char *fmt = getenv(\"USER_FMT\"); sprintf(buf, fmt, val);",
+    "code": "void vulnerable_sprintf_dynamic_fmt(int val) {\n    char buf[128];\n    char *fmt = getenv(\"USER_FMT\");\n    sprintf(buf, fmt, val);\n}",
+    "evidence_metadata": {
+      "confidence": 0.92,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 2,
+      "is_multi_layer": true
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-046",
+    "group_id": "GRP-CWE134-REGEX-SPRINTF",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/taint_fixtures.c",
+    "function_name": "safe_sprintf_lit",
+    "expected_rule": "RULE-SPRINTF-004",
+    "analyzer_source": "regex",
+    "description": "sprintf() called with a hardcoded constant format string literal.",
+    "rationale": "Benign finding: lexical regex rule flags any occurrence of sprintf() as CWE-134, but format string is completely static and safe.",
+    "code_snippet": "sprintf(buf, \"ID: %d, Name: %s\", id, name);",
+    "code": "void safe_sprintf_lit(int id, char *name) {\n    char buf[64];\n    sprintf(buf, \"ID: %d, Name: %s\", id, name);\n}",
+    "evidence_metadata": {
+      "confidence": 0.85,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-047",
+    "group_id": "GRP-CWE134-FPRINTF-LOG",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_fprintf_dynamic",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "User input read from stdin passed as format string to fprintf(stderr).",
+    "rationale": "Genuine vulnerability: untrusted input directly passed as format string argument to fprintf().",
+    "code_snippet": "fgets(buf, sizeof(buf), stdin); fprintf(stderr, buf);",
+    "code": "void vulnerable_fprintf_dynamic(void) {\n    char buf[256];\n    fgets(buf, sizeof(buf), stdin);\n    fprintf(stderr, buf);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-048",
+    "group_id": "GRP-CWE134-FPRINTF-LOG",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_fprintf_fixed_prefix",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Constant static diagnostic message variable passed to fprintf(stdout).",
+    "rationale": "Benign finding: AST analyzer flags non-literal node type, but message string is fixed and immutable.",
+    "code_snippet": "const char *prefix = \"[INFO] Daemon active\\n\"; fprintf(stdout, prefix);",
+    "code": "void safe_fprintf_fixed_prefix(void) {\n    const char *prefix = \"[INFO] Daemon active\\n\";\n    fprintf(stdout, prefix);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-049",
+    "group_id": "GRP-CWE134-SYSLOG-AUDIT",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_syslog_untrusted",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Untrusted event string from environment logged directly via syslog().",
+    "rationale": "Genuine vulnerability: attacker can embed %s or %n in environment string to crash or exploit syslog daemon.",
+    "code_snippet": "char *event = getenv(\"EVENT\"); syslog(LOG_NOTICE, event);",
+    "code": "void vulnerable_syslog_untrusted(void) {\n    char *event = getenv(\"EVENT\");\n    syslog(LOG_NOTICE, event);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-050",
+    "group_id": "GRP-CWE134-SYSLOG-AUDIT",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_syslog_const_cat",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Constant static category tag variable passed to syslog().",
+    "rationale": "Benign finding: AST analyzer flags identifier node, but string is an immutable static tag without conversion specifiers.",
+    "code_snippet": "const char *cat = \"AUTH_OK\\n\"; syslog(LOG_INFO, cat);",
+    "code": "void safe_syslog_const_cat(void) {\n    const char *cat = \"AUTH_OK\\n\";\n    syslog(LOG_INFO, cat);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-051",
+    "group_id": "GRP-CWE134-TABLE-LOOKUP",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_table_user_index",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Table element containing untrusted environment string evaluated as format.",
+    "rationale": "Genuine vulnerability: format string dynamically retrieved from array populated with untrusted data.",
+    "code_snippet": "fmt_table[0] = getenv(\"FMT\"); printf(fmt_table[0], arg);",
+    "code": "void vulnerable_table_user_index(int arg) {\n    char *fmt_table[4];\n    fmt_table[0] = getenv(\"FMT\");\n    printf(fmt_table[0], arg);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-052",
+    "group_id": "GRP-CWE134-TABLE-LOOKUP",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_table_const_strings",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Static table of literal format strings indexed with constant subscript.",
+    "rationale": "Benign finding: AST analyzer flags subscript expression tbl[0], but array elements are compile-time static literals.",
+    "code_snippet": "const char *tbl[] = {\"%d\\n\", \"%s\\n\"}; printf(tbl[0], 42);",
+    "code": "void safe_table_const_strings(void) {\n    const char *tbl[] = {\"%d\\n\", \"%s\\n\"};\n    printf(tbl[0], 42);\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-053",
+    "group_id": "GRP-CWE134-WRAPPER-FUNCTION",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_wrapper_passthrough",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Logging wrapper forwards parameter to printf() where caller supplies untrusted input.",
+    "rationale": "Genuine vulnerability: wrapper receives untrusted parameter and passes it directly to format string argument of printf().",
+    "code_snippet": "void custom_log(char *m) { printf(m); }",
+    "code": "void custom_log(char *m) {\n    printf(m);\n}\nvoid test(void) {\n    custom_log(getenv(\"USER_LOG\"));\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-054",
+    "group_id": "GRP-CWE134-WRAPPER-FUNCTION",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_wrapper_internal_caller",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Internal logger receives only hardcoded literal string from callers.",
+    "rationale": "Benign finding: AST analyzer flags parameter passed to printf(msg), but program context confirms only literal strings are ever passed.",
+    "code_snippet": "void internal_log(const char *msg) { printf(msg); }",
+    "code": "void internal_log(const char *msg) {\n    printf(msg);\n}\nvoid test(void) {\n    internal_log(\"Application ready\\n\");\n}",
+    "evidence_metadata": {
+      "confidence": 0.96,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-055",
+    "group_id": "GRP-CWE134-SNPRINTF-COMPOSED",
+    "cwe": "CWE-134",
+    "label": 1,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "vulnerable_snprintf_dynamic_fmt",
+    "expected_rule": "AST-FORMAT-001",
+    "analyzer_source": "ast",
+    "description": "Dynamic variable used as format specifier in snprintf().",
+    "rationale": "Genuine vulnerability: user-controllable format string passed into snprintf().",
+    "code_snippet": "snprintf(out, sizeof(out), user_fmt, 100);",
+    "code": "void vulnerable_snprintf_dynamic_fmt(char *user_fmt) {\n    char out[128];\n    snprintf(out, sizeof(out), user_fmt, 100);\n}",
+    "evidence_metadata": {
+      "confidence": 0.88,
+      "analysis_status": "CONFIRMED",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  },
+  {
+    "sample_id": "SMP-CWE134-056",
+    "group_id": "GRP-CWE134-SNPRINTF-COMPOSED",
+    "cwe": "CWE-134",
+    "label": 0,
+    "source_file": "backend/tests/corpus/cwe_134_format_string.c",
+    "function_name": "safe_snprintf_literal_spec",
+    "expected_rule": "RULE-SPRINTF-004",
+    "analyzer_source": "regex",
+    "description": "snprintf() called with static format literal string.",
+    "rationale": "Benign finding: lexical regex rule flags sprintf family call, but format template is a completely static string literal.",
+    "code_snippet": "snprintf(out, sizeof(out), \"Code: %d\\n\", 200);",
+    "code": "void safe_snprintf_literal_spec(void) {\n    char out[64];\n    snprintf(out, sizeof(out), \"Code: %d\\n\", 200);\n}",
+    "evidence_metadata": {
+      "confidence": 0.85,
+      "analysis_status": "LIKELY",
+      "dataflow_steps": 0,
+      "is_multi_layer": false
+    }
+  }
+]

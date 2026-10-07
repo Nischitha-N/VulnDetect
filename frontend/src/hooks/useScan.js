@@ -26,53 +26,8 @@ async function animateSteps(addStep, completeStep, setProgress) {
 }
 
 /** Call Claude API as AI-powered fallback scanner */
-async function aiScan(filename, sourceText) {
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: `You are a C/C++ static analysis engine. Analyze the provided source code and return ONLY valid JSON (no markdown fences, no extra text) following this exact schema:
-{
-  "scan_id": "string",
-  "timestamp": "ISO8601 string",
-  "summary": {
-    "total_files": 1,
-    "total_vulnerabilities": 0,
-    "high_risk": 0,
-    "medium_risk": 0,
-    "low_risk": 0,
-    "scan_duration_ms": 0,
-    "vulnerability_types": {}
-  },
-  "results": [
-    {
-      "file": "filename",
-      "line": 0,
-      "vulnerability": "type",
-      "risk_score": 0.0,
-      "severity": "CRITICAL|HIGH|MEDIUM|LOW",
-      "explanation": "why this is dangerous",
-      "fix": "concrete replacement code",
-      "code_snippet": "N: code\\nN: code"
-    }
-  ]
-}
-
-Detect ALL of: gets(), strcpy(), strcat(), sprintf(), scanf(%s), system(), printf(variable), unchecked malloc(), double free, memcpy without bounds check, vsprintf(), format string bugs. Be precise about line numbers. Assign risk_score 0.0-1.0 (CRITICAL>=0.85, HIGH>=0.65, MEDIUM>=0.40, LOW<0.40).`,
-      messages: [{
-        role: 'user',
-        content: `Analyze file "${filename}":\n\n${sourceText.slice(0, 4000)}`,
-      }],
-    }),
-  })
-
-  if (!resp.ok) throw new Error(`Anthropic API ${resp.status}`)
-  const d = await resp.json()
-  const raw = d.content.map(b => b.text || '').join('')
-  return JSON.parse(raw.replace(/```json|```/g, '').trim())
-}
+// REMOVED: aiScan() and Anthropic API fallback have been removed.
+// The frontend now relies exclusively on the backend static analysis engine.
 
 export function useScan() {
   const { startScan, addStep, completeStep, setProgress, finishScan, reset } = useStore()
@@ -96,25 +51,16 @@ export function useScan() {
           if (e.total) setProgress(Math.round((e.loaded / e.total) * 30))
         })
       } catch (err) {
-        console.warn('Backend scan failed, falling back to AI:', err)
-        const text = await file.text().catch(() => '')
-        result = await aiScan(file.name, text).catch(() => null)
-      }
-    } else {
-      // ── AI fallback path ───────────────────────────────────────────────
-      try {
-        const text = await file.text().catch(() => '')
-        result = await aiScan(file.name, text)
-      } catch (err) {
-        console.error('AI scan failed:', err)
+        console.error('Backend scan failed:', err)
         result = null
       }
     }
+    // No AI fallback — backend is the only scanner
 
     await animPromise  // ensure animation completes
 
     if (!result) {
-      // Last-resort fallback: return a clear error result
+      // Return a clear error result when backend is unavailable or failed
       result = {
         scan_id: `err-${Date.now()}`,
         timestamp: new Date().toISOString(),
